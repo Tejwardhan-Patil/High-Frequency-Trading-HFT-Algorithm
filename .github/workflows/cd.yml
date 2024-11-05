@@ -1,0 +1,117 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy-aws:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the latest code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Docker and Docker Compose
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      # Step 3: Build Docker images for all necessary components
+      - name: Build Docker images
+        run: |
+          docker-compose -f deployment/docker-compose.yml build
+
+      # Step 4: Push Docker images to Docker Hub
+      - name: Push Docker images
+        run: |
+          docker-compose -f deployment/docker-compose.yml push
+
+      # Step 5: Deploy the system to AWS
+      - name: Deploy to AWS
+        run: |
+          python deployment/scripts/deploy_aws.py
+
+      # Step 6: Notify Slack of successful deployment
+      - name: Notify Slack of AWS Deployment Success
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          fields: repo,message,commit
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-gcp:
+    name: Deploy to GCP
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the latest code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Docker and Docker Compose
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      # Step 3: Build Docker images for all necessary components
+      - name: Build Docker images
+        run: |
+          docker-compose -f deployment/docker-compose.yml build
+
+      # Step 4: Push Docker images to Docker Hub
+      - name: Push Docker images
+        run: |
+          docker-compose -f deployment/docker-compose.yml push
+
+      # Step 5: Deploy the system to GCP
+      - name: Deploy to GCP
+        run: |
+          python deployment/scripts/deploy_gcp.py
+
+      # Step 6: Notify Slack of successful deployment
+      - name: Notify Slack of GCP Deployment Success
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          fields: repo,message,commit
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      # Step 1: Checkout the latest code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      # Step 3: Rollback the Docker containers to the previous stable release
+      - name: Rollback to previous version
+        run: |
+          docker-compose -f deployment/docker-compose.yml pull previous
+          docker-compose -f deployment/docker-compose.yml up -d previous
+
+      # Step 4: Notify Slack of Rollback
+      - name: Notify Slack of Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          fields: repo,message,commit
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

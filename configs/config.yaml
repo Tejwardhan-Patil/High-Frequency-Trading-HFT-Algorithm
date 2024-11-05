@@ -1,0 +1,98 @@
+# General Settings
+environment: production  
+log_level: INFO  
+data_directory: "/data/"
+
+# API Keys for Market Data
+market_data_api:
+  provider: "MarketDataProvider"
+  api_key: "market_data_api_key"
+
+# Risk Management Settings
+risk_management:
+  max_position_size: 100000  # Maximum allowed position size
+  max_loss_limit: 50000      # Maximum loss limit for the day
+  stop_loss_threshold: 0.05  # Stop loss threshold (5% drop)
+  max_orders_per_minute: 50  # Limit on the number of orders per minute
+
+# Execution Engine Configuration
+execution:
+  broker_api:
+    provider: "BrokerAPIProvider"
+    api_key: "broker_api_key"
+    trading_fee: 0.001  # 0.1% trading fee
+
+  algorithms:
+    twap:
+      enabled: true
+      time_window: 15  # Time window in minutes
+    vwap:
+      enabled: true
+      volume_window: 10000  # Volume window for VWAP
+    iceberg:
+      enabled: true
+      display_quantity: 1000  # Display quantity for iceberg orders
+
+# Trading Strategies
+strategies:
+  momentum:
+    enabled: true
+    window_size: 30  # Lookback period for momentum calculation
+    threshold: 0.01  # Threshold for momentum trigger (1% price change)
+    
+  mean_reversion:
+    enabled: false
+    window_size: 50  # Lookback period for mean reversion
+    threshold: 0.02  # Threshold for reversion trigger (2% price deviation)
+    
+  arbitrage:
+    enabled: true
+    window_size: 20  # Lookback period for arbitrage detection
+    threshold: 0.005  # Arbitrage price discrepancy threshold (0.5%)
+
+# Backtesting and Simulation
+backtest:
+  data_source: "/historical/data"
+  initial_capital: 1000000
+  commission: 0.001  # Commission per trade
+
+# Performance Monitoring
+performance_metrics:
+  sharpe_ratio: true
+  drawdown: true
+  slippage: true
+
+# Deployment Settings
+deployment:
+  aws:
+    enabled: true
+    instance_type: c5.large
+    region: us-east-1
+    docker_image: "hft-system:latest"
+    auto_scale: true
+    security_group: "sg-aws-123456"
+    key_pair: "aws-key-pair"
+    
+  gcp:
+    enabled: false
+    instance_type: n1-standard-4
+    region: us-central1
+    docker_image: "hft-system:latest"
+    auto_scale: true
+    project_id: "gcp-project-id"
+    network: "gcp-network"
+    service_account_key: "/gcp/service/account/key.json"
+
+# Compliance and Reporting
+compliance:
+  enable: true
+  reporting_frequency: daily
+  report_path: "/reports/"
+
+# Monitoring Settings
+monitoring:
+  latency_monitoring: true
+  performance_dashboard: true
+  alert_thresholds:
+    order_latency: 100  # in milliseconds
+    order_failure_rate: 0.01  # 1% failure rate threshold

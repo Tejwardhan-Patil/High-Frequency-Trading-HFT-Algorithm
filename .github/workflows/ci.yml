@@ -1,0 +1,113 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        language: [python, cpp, java]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.x
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      
+      - name: Set up C++
+        if: matrix.language == 'cpp'
+        run: sudo apt-get install g++-9 -y
+
+      - name: Set up Java 11
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+
+      - name: Install Python dependencies
+        if: matrix.language == 'python'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build C++ components
+        if: matrix.language == 'cpp'
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+
+      - name: Compile Java components
+        if: matrix.language == 'java'
+        run: |
+          mkdir -p bin
+          javac -d bin $(find . -name "*.java")
+
+      - name: Run Python tests
+        if: matrix.language == 'python'
+        run: python -m unittest discover -s tests
+
+      - name: Run C++ tests
+        if: matrix.language == 'cpp'
+        run: |
+          cd build
+          ctest --output-on-failure
+
+      - name: Run Java tests
+        if: matrix.language == 'java'
+        run: java -cp bin org.junit.runner.JUnitCore $(find . -name "*Test.java")
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Python linter
+        run: |
+          python -m pip install flake8
+
+      - name: Lint Python code
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Lint C++ code
+        run: |
+          sudo apt-get install clang-format
+          find . -name "*.cpp" -o -name "*.h" | xargs clang-format -i
+
+      - name: Lint Java code
+        run: |
+          sudo apt-get install checkstyle
+          checkstyle -c /google_checks.xml $(find . -name "*.java")
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Python security checks
+        run: |
+          pip install bandit
+          bandit -r .
+
+      - name: Run Docker security scan
+        run: |
+          sudo apt-get install docker.io
+          docker build -t trading-system .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image trading-system

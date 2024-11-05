@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  market-data-feed:
+    image: hft/market-data-feed:latest
+    container_name: market_data_feed
+    restart: always
+    networks:
+      - hft_network
+    volumes:
+      - ./data/raw:/app/data/raw
+    environment:
+      - API_KEY=${MARKET_DATA_API_KEY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  execution-engine:
+    image: hft/execution-engine:latest
+    container_name: execution_engine
+    restart: always
+    networks:
+      - hft_network
+    depends_on:
+      - market-data-feed
+    volumes:
+      - ./execution:/app/execution
+    environment:
+      - BROKER_API_KEY=${BROKER_API_KEY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  risk-manager:
+    image: hft/risk-manager:latest
+    container_name: risk_manager
+    restart: always
+    networks:
+      - hft_network
+    depends_on:
+      - execution-engine
+    volumes:
+      - ./risk_management:/app/risk_management
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  latency-monitor:
+    image: hft/latency-monitor:latest
+    container_name: latency_monitor
+    restart: always
+    networks:
+      - hft_network
+    volumes:
+      - ./execution:/app/execution
+    depends_on:
+      - execution-engine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  hft_network:
+    driver: bridge
